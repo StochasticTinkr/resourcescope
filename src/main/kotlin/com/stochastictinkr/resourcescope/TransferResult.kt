@@ -87,6 +87,4 @@ class TransferResult<R> {
         check(valueField == Uninitialized) { "Can not change result once set." }
         valueField = value()
     }
-
-    fun component1() = value
 }

@@ -123,6 +123,31 @@ class ResourceScopeTest {
     }
 
     @Test
+    fun `resource can be transferred via releaseTo and ownershipReceiver`() {
+        val scope1 = ResourceScope()
+        val scope2 = ResourceScope()
+        val closed = mutableListOf<Int>()
+        val resource = scope1.initializeResource({ 1 }, { closed.add(it) })
+        val transferred = resource releaseTo scope2.ownershipReceiver()
+        assertEquals(1, transferred.value)
+        scope1.close()
+        assertTrue(closed.isEmpty())
+        scope2.close()
+        assertEquals(listOf(1), closed)
+    }
+
+    @Test
+    fun `releasing a closed resource should throw`() {
+        val scope1 = ResourceScope()
+        val scope2 = ResourceScope()
+        val resource = scope1.initializeResource({ 1 }, {})
+        resource.close()
+        assertFailsWith<IllegalStateException> {
+            resource releaseTo scope2.ownershipReceiver()
+        }
+    }
+
+    @Test
     fun `resources can be removed`() {
         val scope = ResourceScope()
         val closed = mutableListOf<Int>()
@@ -163,6 +188,22 @@ class ResourceScopeTest {
     }
 
     @Test
+    fun `resource valueOrNull should be null if scope is closed`() {
+        val resource = resourceScope {
+            construct { 1 } finally { }
+        }
+        assertNull(resource.valueOrNull())
+    }
+
+    @Test
+    fun `resource valueOrNull should be value if scope is not closed`() {
+        resourceScope {
+            val valueOrNull = (construct { 1 } finally { }).valueOrNull()
+            assertEquals(1, valueOrNull)
+        }
+    }
+
+    @Test
     fun `resourceScope should close resources`() {
         val closed = mutableListOf<Int>()
         resourceScope {
@@ -184,4 +225,27 @@ class ResourceScopeTest {
         }
         assertEquals(listOf(1), closed)
     }
+
+    @Test
+    fun `takeOwnershipOf works on foreign resources`() {
+        val scope1 = ResourceScope()
+        val scope2 = ResourceScope()
+        val resource = scope1.initializeResource({ 1 }, {})
+        // This bypasses the optimization of takeOwnershipOf in ResourceScopeImpl
+        val resourceDelegate = object : Resource<Int> by resource {}
+        val transferred = scope2.takeOwnershipOf(resourceDelegate)
+        assertEquals(1, transferred.value)
+        scope1.close()
+        scope2.close()
+    }
+
+    @Test
+    fun `destructuring of Resource works as expected`() {
+        resourceScope {
+            val (value, resource) = construct { 1 } finally { }
+            assertEquals(1, value)
+            assertEquals(1, resource.value)
+        }
+    }
+
 }

@@ -124,7 +124,9 @@ internal class ResourceScopeImpl : ResourceScope {
         return resource.releaseTo(ownershipReceiver())
     }
 
-    override fun <V> ownershipReceiver() = ResourceReceiver<V, Resource<V>> { value, action ->
-        accepted(ResourceImpl(this@ResourceScopeImpl, value, action).also(::push))
+    override fun <V> ownershipReceiver() = ResourceReceiver<V, Resource<V>> { value, destructor ->
+        val resource = ResourceImpl(this@ResourceScopeImpl, value, destructor)
+        push(resource)
+        accepted(resource)
     }
 }

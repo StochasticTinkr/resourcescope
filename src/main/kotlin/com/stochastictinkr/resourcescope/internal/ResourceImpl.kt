@@ -16,7 +16,7 @@ import com.stochastictinkr.resourcescope.or
 internal class ResourceImpl<V>(
     scope: ResourceScopeImpl,
     private var state: Any? = Uninitialized,
-    private var destructor: (V) -> Unit = {},
+    private var destructor: ((V) -> Unit)? = null,
 ) : Resource<V> {
     /**
      * Represents an uninitialized resource.
@@ -84,8 +84,12 @@ internal class ResourceImpl<V>(
             state = Closed
 
             // Perform the destructor action if the resource was active.
-            withActiveResource(previousState) { destructor(it) }
+            destroy(previousState)
         }
+    }
+
+    private fun destroy(state: Any?) {
+        withActiveResource(state) { destructor?.let { destroy -> destroy(it) } }
     }
 
     /**
@@ -125,10 +129,10 @@ internal class ResourceImpl<V>(
             .also { result ->
                 receiver.run {
                     when (state) {
-                        Uninitialized -> result.noValue() { "Access to uninitialized resource" }
-                        Closed -> result.noValue() { "Access to closed resource" }
+                        Uninitialized -> result.noValue { "Access to uninitialized resource" }
+                        Closed -> result.noValue { "Access to closed resource" }
                         else -> @Suppress("UNCHECKED_CAST")
-                        (result.receive(state as V, destructor))
+                        (result.receive(state as V, destructor!!))
                     }
                 }
             }
@@ -141,7 +145,7 @@ internal class ResourceImpl<V>(
         scope = null
         val previousState = state
         state = Closed
-        withActiveResource(previousState, destructor)
+        destroy(previousState)
     }
 
     /**
