@@ -69,8 +69,7 @@ interface ResourceScope : AutoCloseable {
      * @throws IllegalStateException if this scope is already closed.
      *
      */
-    infix fun <V> takeOwnershipOf(resource: Resource<V>): Resource<V> =
-        resource.releaseTo(ownershipReceiver())
+    infix fun <V> takeOwnershipOf(resource: Resource<V>): Resource<V>
 
     /**
      * Removes the specified resource from this scope. The resource will need to be closed manually.

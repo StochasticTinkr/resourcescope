@@ -188,6 +188,19 @@ class ResourceScopeTest {
     }
 
     @Test
+    fun `finally can take a function reference`() {
+        var closed = false
+        fun close() {
+            closed = true
+        }
+        resourceScope {
+            construct { 1 } finally ::close
+        }
+        assertTrue(closed)
+    }
+
+
+    @Test
     fun `resource valueOrNull should be null if scope is closed`() {
         val resource = resourceScope {
             construct { 1 } finally { }
@@ -221,6 +234,18 @@ class ResourceScopeTest {
         resourceScope {
             construct { 1 } then { configured.add(this) } finally { closed.add(this) }
             assertEquals(listOf(1), configured)
+            assertTrue(closed.isEmpty())
+        }
+        assertEquals(listOf(1), closed)
+    }
+
+    @Test
+    fun `then can be chained`() {
+        val configured = mutableListOf<Int>()
+        val closed = mutableListOf<Int>()
+        resourceScope {
+            construct { 1 } then { configured.add(this) } then { configured.add(this) } finally { closed.add(this) }
+            assertEquals(listOf(1, 1), configured)
             assertTrue(closed.isEmpty())
         }
         assertEquals(listOf(1), closed)

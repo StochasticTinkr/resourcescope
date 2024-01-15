@@ -31,7 +31,7 @@ class TransferResult<R> {
     fun valueOrNull(): R? {
         @Suppress("UNCHECKED_CAST")
         return when (val value = valueField) {
-            Uninitialized -> error { "Result not yet initialized" }
+            Uninitialized -> uninitializedError()
             is Failure -> null
             is Rejected -> value.value
             else -> value
@@ -49,12 +49,15 @@ class TransferResult<R> {
         get() {
             @Suppress("UNCHECKED_CAST")
             return when (val value = valueField) {
-                Uninitialized -> error { "Result not yet initialized" }
+                Uninitialized -> uninitializedError()
                 is Failure -> throw value.exception
                 is Rejected -> value.value
                 else -> value
             } as R
         }
+
+    private fun uninitializedError(): Nothing =
+        error("Result not yet initialized")
 
     /**
      * Returns true if the transfer was accepted or false otherwise.
